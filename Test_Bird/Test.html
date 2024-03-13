@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Bird Clone</title>
+<style>
+    canvas {
+        border: 1px solid #000;
+        display: block;
+        margin: 0 auto;
+        background-color: #00f;
+    }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="480" height="320"></canvas>
+<script>
+    // Get the canvas element and context
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Bird properties
+    const birdImage = new Image();
+    birdImage.src = "bird.png";
+    const bulletImage = new Image();
+    bulletImage.src = "bullet.png";
+    const bullets = [];
+    
+    const bird = {
+        x: 50,
+        y: canvas.height / 2,
+        radius: 20,
+        velocityY: 0,
+        gravity: 0.5,
+        jump: -5
+    };
+
+    // Pipe properties
+    const pipe = {
+        position: [],
+        width: 50,
+        gap: 150,
+        speed: 3
+    };
+
+    // Game control variables
+    let gameOver = false;
+    let score = 0;
+
+    // Event listener for jumping
+    document.addEventListener("keydown", (event) => {
+    if (!gameOver && event.keyCode === 87) { // 'W' key
+        bird.velocityY = bird.jump;
+    }});
+
+    // Function to draw the bird
+    function drawBird() {
+        ctx.drawImage(birdImage, bird.x - bird.radius, bird.y - bird.radius, bird.radius * 2, bird.radius * 2);
+    }
+
+    // Function to draw the pipes
+    function drawPipes() {
+        ctx.fillStyle = "#2E8B57";
+        for (let i = 0; i < pipe.position.length; i++) {
+            const p = pipe.position[i];
+            ctx.fillRect(p.x, 0, pipe.width, p.top);
+            ctx.fillRect(p.x, p.top + pipe.gap, pipe.width, canvas.height - p.top - pipe.gap);
+        }
+    }
+
+    // Function to move the pipes
+    function movePipes() {
+        for (let i = 0; i < pipe.position.length; i++) {
+            const p = pipe.position[i];
+            p.x -= pipe.speed;
+
+            // If the pipe moves off screen, remove it and add a new one
+            if (p.x + pipe.width < 0) {
+                pipe.position.shift();
+                score++;
+            }
+
+            // Check for collision with bird
+            if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipe.width &&
+                (bird.y - bird.radius < p.top || bird.y + bird.radius > p.top + pipe.gap)) {
+                gameOver = true;
+            }
+        }
+    }
+
+    // Function to draw the score
+    function drawScore() {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#000";
+        ctx.fillText("Score: " + score, 8, 20);
+        ctx.fillText("Bullets: " + bulletsCount, canvas.width - 100, 20);
+    }
+    function drawBullets() {
+        for (let i = 0; i < bullets.length; i++) {
+            const bullet = bullets[i];
+            ctx.drawImage(bulletImage, bullet.x, bullet.y, bullet.width, bullet.height);
+        }
+    }
+
+    function moveBullets() {
+        for (let i = 0; i < bullets.length; i++) {
+            const bullet = bullets[i];
+            bullet.x += bullet.speed;
+
+            // Remove bullets that go off-screen
+            if (bullet.x > canvas.width) {
+                bullets.splice(i, 1);
+                i--;
+            }
+        }
+    }
+
+    document.addEventListener("keydown", (event) => {
+    if (!gameOver && event.keyCode === 32 && bulletsCount > 0) { // Spacebar key and bullets available
+        bullets.push({
+            x: bird.x + bird.radius,
+            y: bird.y,
+            width: 10,
+            height: 5,
+            speed: 5
+        });
+        bulletsCount--; // Decrease the bullet count
+    }
+});
+
+function checkBulletCollision() {
+    for (let i = 0; i < bullets.length; i++) {
+        const bullet = bullets[i];
+        for (let j = 0; j < pipe.position.length; j++) {
+            const p = pipe.position[j];
+            // Check if the bullet hits any part of the pipe except the gap area
+            if ((bullet.x + bullet.width >= p.x && bullet.x <= p.x + pipe.width) &&
+                (bullet.y <= p.top || bullet.y + bullet.height >= p.top + pipe.gap)) {
+                // Bullet hits the pipe
+                bullets.splice(i, 1);
+                pipe.position.splice(j, 1);
+                score += 10; // Increase score for destroying a pipe
+                break;
+            }
+        }
+    }
+}
+
+    let bulletsCount = 0;
+
+    document.addEventListener("keydown", (event) => {
+    if (event.keyCode === 82) { // 'R' key
+        resetGame();
+    }});
+
+    function resetGame() {
+    // Reset bird position and velocity
+    bird.y = canvas.height / 2;
+    bird.velocityY = 0;
+    // Reset pipe positions
+    pipe.position = [];
+    // Reset other game variables
+    gameOver = false;
+    score = 0;
+    }
+
+    let elapsedTime = 0;
+    
+    // Function to update the game
+    function update() {
+        if (!gameOver) {
+
+            elapsedTime += 0.02;
+            pipe.speed = 3 + elapsedTime * 0.1;
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Move the bird
+            bird.velocityY += bird.gravity;
+            bird.y += bird.velocityY;
+
+            // Draw elements
+            drawBird();
+            drawPipes();
+            drawScore();
+            drawBullets();
+            moveBullets();
+            movePipes();
+            checkBulletCollision();
+
+            // Check for game over
+            if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) {
+                gameOver = true;
+            }
+        } else {
+            ctx.font = "30px Arial";
+            ctx.fillStyle = "#000";
+            ctx.fillText("Game Over", canvas.width / 2 - 90, canvas.height / 2 - 15);
+            ctx.fillText("Score: " + score, canvas.width / 2 - 60, canvas.height / 2 + 15);
+        }
+        for (let i = 0; i < pipe.position.length; i++) {
+        const p = pipe.position[i];
+        if (bird.x > p.x + pipe.width && !p.passed) {
+            p.passed = true; // Mark the pipe as passed
+            bulletsCount++; // Increment the bullet count
+        }
+    }
+}
+
+    // Game loop
+    setInterval(update, 20);
+
+    // Function to generate pipes
+    function generatePipes() {
+        const position = Math.random() * (canvas.height - pipe.gap - 50);
+        pipe.position.push({ x: canvas.width, top: position });
+    }
+
+    // Generate pipes every 2 seconds
+    setInterval(generatePipes, 2000);
+</script>
+</body>
+</html>
